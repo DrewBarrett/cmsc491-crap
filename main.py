@@ -6,12 +6,29 @@ def pstring(instr):
     toret = instr.encode("utf8")
     return chr(len(toret)).encode("utf8") + toret
 
+def ppstring(pstrings):
+    ret = []
+    l = len(pstrings)
+    i = 0
+    while i < l:
+        nlen = pstrings[i]
+        msg = pstrings[i+1:i+nlen+1].decode()
+        ret.append(msg)
+        i += nlen
+    return ret
+
 def make_parcel(msg):
     return chr(len(msg)).encode("utf8") + msg
 
 def bindRequest(v, name, passwd):
     return chr(0x23).encode("utf8") + chr(v).encode("utf8") + \
         pstring(name) + pstring(passwd)
+
+def get_response(s):
+    l = s.recv(1)
+    l = int.from_bytes(l, byteorder='little')
+    r = s.recv(l * 8)
+    return r
 
 if __name__ == "__main__":
     import binascii
@@ -22,4 +39,14 @@ if __name__ == "__main__":
     assert binascii.hexlify(make_parcel(bindRequest(1, "user", "pass"))) \
         == b'0c230104757365720470617373'
 
-    s = socket.Socket()
+    s = socket.socket()
+    s.connect(("notanexploit.club", 9090))
+    while True:
+        s.sendall(make_parcel(bindRequest(1, "dbarret1", "letmei")))
+        res = get_response(s)
+        if len(res) == 0:
+            continue
+        print(ppstring(res[2:]))
+        if res[0] == 0x24 and res[1] == 0x77:
+            break
+
