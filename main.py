@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import socket
+
 def pstring(instr):
     toret = instr.encode("utf8")
     return chr(len(toret)).encode("utf8") + toret
@@ -19,3 +21,5 @@ if __name__ == "__main__":
         == b'230104757365720470617373'
     assert binascii.hexlify(make_parcel(bindRequest(1, "user", "pass"))) \
         == b'0c230104757365720470617373'
+
+    s = socket.Socket()
