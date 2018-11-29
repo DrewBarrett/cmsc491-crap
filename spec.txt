@@ -1,0 +1,243 @@
+UMBC Cyber Dawgs                                             Z. Orndorff
+Request for Comments: 1011337                                       UMBC
+                                                           November 2018
+
+
+                 Cyber Resource Acquisition Protocol
+
+Status of This Memo
+
+   This document is not an Internet Standards Track specification; it is
+   a homework assignment for CMSC 491 Active Cyber Defense. It is also
+   valid for many other uses, however, I can't think of any reason you'd
+   want to use it.
+
+   Information about the current status of this document, any errata,
+   and how to provide feedback on it my be obtained in #cmsc-491-791 in
+   Slack.
+
+Abstract
+
+   The Cyber Resource Acquisition Protocol allows people to look up
+   information about cyber resources before acquiring them. To save
+   bandwidth, a binary protocol is defined to accomplish this.
+
+1. Introduction
+
+   The Cyber Resource Acquisition Protocol (CRAP) is based loosely on
+   the Lightweight Directory Access Protocol (LDAP) [RFC4511], in that
+   it stores directory information as a set of key-value attributes.
+
+   Since CRAP is significantly diminished in scope, it lacks support for
+   things like adding, updating, or deleting directory entries, as well
+   as many advanced querying features.
+
+   We hope that it serves as a suitable introduction to protocol
+   implementation for beginners, without too much trouble.
+
+2.  Conventions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", and "MAY" in this document are
+   to be interpreted as described in [RFC2119].
+
+3. Elements of Protocol
+
+   The protocol is described relatively informally, however, the syntax
+   used is inspired by ASN.1 and EBNF.
+
+3.1. Common Elements
+
+   This section describes the primitive data types, as well as how they
+   are combined into larger messages.
+
+3.1.1. Message Container (Parcels)
+
+   Within CRAP, all messages are contained in parcels. Implementations
+   SHOULD make sure they have a complete parcel before attempting to
+   parse it. Implementers MUST realize that network conditions may cause
+   parcels to be split among several packets, which must be reassembled.
+
+   A parcel consists of the following
+        Parcel ::= {
+             length     CHAR,
+             msg        Message
+        }
+
+   So a parcel is simply a length, followed by a message of that many bytes.
+
+3.1.2. Messages
+
+   A message sits immediately inside a Parcel, and has the following
+   format
+        Message ::= {
+             msg_type   CHAR,
+             msg_data   <some_message_type>
+        }
+
+   Basically, messages start with a msg_type byte that state what kind
+   of message they are, followed by the message data.
+
+3.1.2. Primitive data types
+
+   The primitive data types for CRAP are CHAR and PSTRING.
+
+3.1.2.1. CHAR
+
+   A CHAR is a one-byte unsigned integer value.
+
+3.1.2.2. PSTRING
+
+   PSTRING is the primary string data type within CRAP. It consists of
+   the following
+        PSTRING ::= {
+             byte_length    CHAR,
+             utf8_string    UTF-8
+        }
+
+    So a PSTRING is a length, followed by that many bytes of UTF-8
+    encoded text.
+
+   If you're curious, PSTRING stands for Pascal string, which uses a
+   similar representation.
+
+3.1.3. Common types
+
+3.1.3.1. CRAPResult
+
+   CRAPResult represents the result of some other message. It consists
+   of the following
+        CRAPResult ::= {
+             resultCode         CHAR,
+             motivational_msg   PSTRING
+        }
+
+   The CRAPResult contains a resultCode, which is machine readable, as
+   well as a human-readable motivational message, which implementers are
+   encouraged to read while implementing the protocol.
+
+   Currently defined resultCodes are RES_FAIL=0x12 and RES_SUCCESS=0x77.
+
+3.1.3.2. OPTIONAL values
+
+   OPTIONAL values are used where a value is sometimes needed in a
+   message, but not always. Both cases MUST be handled.
+
+   The encoding consists of a tag byte of 0x23 (which represents no item
+   and therefore completes the OPTIONAL value) or a tag byte of 0x2b,
+   which represents the case where a value exists. 0x2b is then followed
+   by the normally-encoded value.
+
+   So it's just an extra byte before the value, and it's 0x23 if there
+   isn't actually a value, and it's 0x2b if there is one.
+
+3.2. The bindRequest message
+
+   bindRequest is how a client authenticates to a server. The
+   bindRequest MUST NOT be repeated after a successful bindResponse is
+   sent.
+
+   msg_type is 0x23.
+
+   The packet format is as follows
+        bindRequest ::= {
+             version    CHAR,
+             name       PSTRING,
+             password   PSTRING
+        }
+
+    At the moment, the only specified version is version 1. Servers MUST
+    NOT allow clients with higher versions to connect.
+
+3.3. The bindResponse
+
+   bindResponse is how a server responds to a bindRequest.
+
+   msg_type is 0x24.
+
+   The packet format is as follows
+        bindResponse ::= {
+             result     CRAPResult
+        }
+
+3.4. The searchRequest
+
+   searchRequest is how clients request information from the server.
+   Before sending a searchRequest, clients MUST be authenticated with a
+   bindRequest.
+
+   msg_type is 0x30.
+
+   The packet format is as follows
+        searchRequest ::= {
+             countLimit     CHAR,
+             filter         OPTIONAL(FILTER),
+        }
+
+   A countLimit of 0 requests all possible results; the server MAY
+   impose a limit without notice to the client.
+
+3.4.1. FILTER
+
+   FILTER is how clients specify which results they want.
+
+   The packet format is as follows
+        FILTER ::= {
+             attribute      PSTRING,
+             value          PSTRING
+        }
+
+   The FILTER specifies that the client wants only entries where
+   <attribute> is set to <value>. Servers MUST only respond with
+   matching results.
+
+3.5. The searchResultEntry message
+
+   Each result entry (in response to a client query) is sent in a
+   searchResultEntry message.
+
+   msg_type is 0x41.
+
+   The packet format is as follows
+        searchResultEntry ::= {
+             count          CHAR,
+             attributes     ARRAY(Attribute),
+        }
+
+   count represents the number of attributes in the attributes array.
+
+   Note: count is NOT the number of search results.
+
+   Here, ARRAY simply means the attributes are concatenated back-to-back
+   -- the count is given, so the parsing is unambiguous.
+
+3.5.1. Attribute
+
+   Attribute represents a key-value pair about a directory entry.
+
+   The packet format is as follows
+        Attribute ::= {
+             name   PSTRING,
+             value  PSTRING
+        }
+
+3.6. The searchResultDone message
+
+   searchResultDone is how the server indicates to the client that all
+   directory entries (for the current search) have been sent.
+
+   The packet format is as follows
+        searchResultDone ::= {
+             result     CRAPResult
+        }
+
+4. Security Considerations
+
+   This entire protocol is in plaintext, so users MUST be aware that any
+   and all data (including passwords) send using CRAP may be
+   compromised.
+
+5. IANA Considerations
+
+   If IANA is crazy enough to read this, they should make sure to not
+   accidentally waste a port number assignment on this.
