@@ -24,6 +24,17 @@ def bindRequest(v, name, passwd):
     return chr(0x23).encode("utf8") + chr(v).encode("utf8") + \
         pstring(name) + pstring(passwd)
 
+def searchRequest(count, filt=None):
+    ret = chr(0x30).encode("utf8") + chr(count).encode("utf8")
+    if filt:
+        ret += chr(0x2b).encode("utf8") + filt
+    else:
+        ret += chr(0x23).encode("utf8")
+    return ret
+
+def filter(attr, val):
+    return pstring(attr) + pstring(val)
+
 def get_response(s):
     l = s.recv(1)
     l = int.from_bytes(l, byteorder='little')
@@ -34,6 +45,14 @@ def get_response(s):
         r += t
     return r
 
+def parse_message(res):
+    if res[0] == 0x24:
+        if res[1] != 0x77:
+            print("Error: failed to connect")
+            print(ppstring(res[2:])[0])
+            exit(1)
+
+
 if __name__ == "__main__":
     import binascii
     assert binascii.hexlify(pstring("teststring")) \
@@ -42,15 +61,15 @@ if __name__ == "__main__":
         == b'230104757365720470617373'
     assert binascii.hexlify(make_parcel(bindRequest(1, "user", "pass"))) \
         == b'0c230104757365720470617373'
+    assert binascii.hexlify(searchRequest(4, None)) \
+        == b'300423'
+    assert binascii.hexlify(searchRequest(4, \
+                            filter("type","protocol"))) \
+        == b'30042b04747970650870726f746f636f6c'
 
     s = socket.socket()
     s.connect(("notanexploit.club", 9090))
-    while True:
-        s.sendall(make_parcel(bindRequest(1, "dbarret1", "letmei")))
-        res = get_response(s)
-        if len(res) == 0:
-            continue
-        print(ppstring(res[2:]))
-        if res[0] == 0x24 and res[1] == 0x77:
-            break
-
+    s.sendall(make_parcel(bindRequest(1, "dbarret1", "letmein")))
+    res = get_response(s)
+    parse_message(res)
+    exit(0)
