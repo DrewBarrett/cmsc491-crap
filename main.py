@@ -14,7 +14,7 @@ def ppstring(pstrings):
         nlen = pstrings[i]
         msg = pstrings[i+1:i+nlen+1].decode()
         ret.append(msg)
-        i += nlen
+        i += nlen + 1
     return ret
 
 def make_parcel(msg):
@@ -46,11 +46,16 @@ def get_response(s):
     return r
 
 def parse_message(res):
-    if res[0] == 0x24:
+    if res[0] == 0x24 or res[0] == 0x42:
         if res[1] != 0x77:
             print("Error: failed to connect")
             print(ppstring(res[2:])[0])
             exit(1)
+    elif res[0] == 0x41:
+        return ppstring(res[2:])
+    else:
+        print("Unknown response!")
+        exit(2)
 
 
 if __name__ == "__main__":
@@ -73,6 +78,19 @@ if __name__ == "__main__":
     res = get_response(s)
     parse_message(res)
     s.sendall(make_parcel(searchRequest(4, None)))
-    res = get_response(s)
-    parse_message(res)
+    sres = []
+    while True:
+        res = get_response(s)
+        if res[0] != 0x41:
+            parse_message(res)
+            break
+        res = parse_message(res)
+        sres.append(res)
+    print("Results:")
+    for i in sres:
+        print('----')
+        j = 0
+        while j < len(i):
+            print(i[j] + ':', i[j+1])
+            j += 2
     exit(0)
