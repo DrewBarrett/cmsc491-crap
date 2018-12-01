@@ -61,7 +61,7 @@ def parse_message(res):
 
 
 if __name__ == "__main__":
-    import binascii
+    import binascii, argparse
     assert binascii.hexlify(pstring("teststring")) \
         == b'0a74657374737472696e67'
     assert binascii.hexlify(bindRequest(1, "user", "pass")) \
@@ -73,13 +73,20 @@ if __name__ == "__main__":
     assert binascii.hexlify(searchRequest(4, \
                             filter("type","protocol"))) \
         == b'30042b04747970650870726f746f636f6c'
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-u', help='Username', required=True)
+    parser.add_argument('-p', help='Password', required=True)
+    parser.add_argument('--limit', help='Limit', required=True, type=int)
+    parser.add_argument('--filter', help='Filter', default=None, required=False)
+    args = parser.parse_args()
     s = socket.socket()
     s.connect(SERVER)
-    s.sendall(make_parcel(bindRequest(1, "dbarret1", "letmein")))
+    s.sendall(make_parcel(bindRequest(1, args.u, args.p)))
     res = get_response(s)
     parse_message(res)
-    s.sendall(make_parcel(searchRequest(4, None)))
+    filt = filter(args.filter.split('=')[0], args.filter.split('=')[1]) \
+        if args.filter else None
+    s.sendall(make_parcel(searchRequest(args.limit, filt)))
     sres = []
     while True:
         res = get_response(s)
