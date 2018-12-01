@@ -72,4 +72,7 @@ if __name__ == "__main__":
     s.sendall(make_parcel(bindRequest(1, "dbarret1", "letmein")))
     res = get_response(s)
     parse_message(res)
+    s.sendall(make_parcel(searchRequest(4, None)))
+    res = get_response(s)
+    parse_message(res)
     exit(0)
