@@ -10,7 +10,7 @@ def ppstring(pstrings):
     ret = []
     l = len(pstrings)
     i = 0
-    while i < l:
+    while i < l - 1:
         nlen = pstrings[i]
         msg = pstrings[i+1:i+nlen+1].decode()
         ret.append(msg)
@@ -27,7 +27,11 @@ def bindRequest(v, name, passwd):
 def get_response(s):
     l = s.recv(1)
     l = int.from_bytes(l, byteorder='little')
-    r = s.recv(l * 8)
+    r = bytes()
+    while l > 0:
+        t = s.recv(l)
+        l -= len(t)
+        r += t
     return r
 
 if __name__ == "__main__":
