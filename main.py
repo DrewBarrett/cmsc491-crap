@@ -2,6 +2,8 @@
 
 import socket
 
+SERVER = ("notanexploit.club", 9090)
+
 def pstring(instr):
     toret = instr.encode("utf8")
     return chr(len(toret)).encode("utf8") + toret
@@ -73,7 +75,7 @@ if __name__ == "__main__":
         == b'30042b04747970650870726f746f636f6c'
 
     s = socket.socket()
-    s.connect(("notanexploit.club", 9090))
+    s.connect(SERVER)
     s.sendall(make_parcel(bindRequest(1, "dbarret1", "letmein")))
     res = get_response(s)
     parse_message(res)
