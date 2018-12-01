@@ -50,8 +50,7 @@ def get_response(s):
 def parse_message(res):
     if res[0] == 0x24 or res[0] == 0x42:
         if res[1] != 0x77:
-            print("Error: failed to connect")
-            print(ppstring(res[2:])[0])
+            print("Error:", ppstring(res[2:])[0])
             exit(1)
     elif res[0] == 0x41:
         return ppstring(res[2:])
